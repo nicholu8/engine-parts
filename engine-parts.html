@@ -1,0 +1,553 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="theme-color" content="#111827">
+<title>🔧 Engine Parts DB</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+  body {
+    background: #0b0f19; color: #e2e8f0;
+    font-family: 'Courier New', 'Lucida Console', monospace;
+    max-width: 480px; margin: 0 auto; min-height: 100vh;
+  }
+  .screen { display: none; min-height: 100vh; }
+  .screen.active { display: block; }
+  .header {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 14px 16px; background: #111827;
+    border-bottom: 1px solid #1f2d40; position: sticky; top: 0; z-index: 10;
+  }
+  .header-title { font-size: 15px; font-weight: 700; color: #f1f5f9; letter-spacing: -0.02em; }
+  .header-btn { background: #1e3a8a; border: none; color: #93c5fd; padding: 6px 14px; border-radius: 20px; font-size: 13px; font-weight: 700; cursor: pointer; font-family: inherit; }
+  .back-btn { background: transparent; border: none; color: #64748b; font-size: 18px; cursor: pointer; padding: 4px 0; font-family: inherit; min-width: 60px; }
+  .header-spacer { min-width: 60px; }
+  .subhead { font-size: 10px; color: #334155; letter-spacing: 0.2em; padding: 16px 16px 8px; font-weight: 700; }
+  .scroll-area { padding: 0 16px 100px; }
+  .engine-card { background: #111827; border: 1px solid #1f2d40; border-radius: 12px; padding: 16px; margin-bottom: 12px; cursor: pointer; -webkit-user-select: none; user-select: none; }
+  .engine-card:active { border-color: #3b82f6; }
+  .engine-name { font-size: 17px; font-weight: 700; color: #f1f5f9; margin-bottom: 3px; }
+  .engine-model { font-size: 12px; color: #60a5fa; font-family: monospace; margin-bottom: 4px; }
+  .engine-notes { font-size: 12px; color: #475569; margin-bottom: 6px; }
+  .engine-count { font-size: 12px; color: #334155; font-weight: 600; text-align: right; }
+  .search-wrap { padding: 12px 16px 0; }
+  .search-input { width: 100%; background: #111827; border: 1px solid #1f2d40; color: #e2e8f0; padding: 12px 16px; border-radius: 10px; font-size: 15px; font-family: inherit; outline: none; }
+  .search-input::placeholder { color: #475569; }
+  .chip-row { display: flex; overflow-x: auto; gap: 8px; padding: 12px 16px; scrollbar-width: none; }
+  .chip-row::-webkit-scrollbar { display: none; }
+  .chip { flex-shrink: 0; background: #111827; border: 1px solid #1f2d40; color: #64748b; padding: 6px 12px; border-radius: 20px; font-size: 11px; cursor: pointer; font-family: inherit; white-space: nowrap; font-weight: 600; -webkit-user-select: none; user-select: none; }
+  .chip.active { background: #1e3a8a; border-color: #3b82f6; color: #93c5fd; }
+  .result-meta { font-size: 11px; color: #334155; padding: 0 16px 8px; letter-spacing: 0.1em; }
+  .part-card { background: #111827; border: 1px solid #1f2d40; border-radius: 10px; padding: 14px; margin-bottom: 10px; cursor: pointer; -webkit-user-select: none; user-select: none; }
+  .part-card:active { border-color: #3b82f6; }
+  .part-row { display: flex; align-items: center; gap: 10px; }
+  .cat-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+  .part-info { flex: 1; min-width: 0; }
+  .part-name { font-size: 14px; font-weight: 600; color: #f1f5f9; margin-bottom: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .part-num { font-size: 12px; color: #60a5fa; font-family: monospace; }
+  .cat-badge { font-size: 10px; padding: 3px 8px; border-radius: 6px; white-space: nowrap; flex-shrink: 0; display: flex; align-items: center; gap: 3px; }
+  .chevron { color: #334155; font-size: 18px; flex-shrink: 0; }
+  .part-note-preview { font-size: 11px; color: #475569; margin-top: 8px; padding-top: 8px; border-top: 1px solid #1f2d40; }
+  .csv-btn { width: 100%; margin-top: 20px; background: #1e293b; border: 1px solid #334155; color: #64748b; padding: 14px; border-radius: 10px; font-size: 13px; font-weight: 700; cursor: pointer; font-family: inherit; }
+  .empty { text-align: center; color: #334155; padding: 40px 0; font-size: 13px; }
+  .detail-area { padding: 20px 16px 100px; }
+  .detail-card { background: #111827; border: 1px solid #1f2d40; border-radius: 10px; padding: 14px 16px; margin-bottom: 10px; }
+  .detail-label { font-size: 10px; color: #334155; letter-spacing: 0.18em; margin-bottom: 6px; font-weight: 700; }
+  .detail-value { font-size: 15px; color: #e2e8f0; line-height: 1.5; }
+  .big-pn { font-size: 26px; font-weight: 800; color: #60a5fa; font-family: monospace; letter-spacing: 0.05em; }
+  .pn-row { display: flex; align-items: center; gap: 12px; }
+  .copy-btn { background: #1e3a8a; border: none; color: #93c5fd; padding: 6px 16px; border-radius: 20px; font-size: 13px; font-weight: 700; cursor: pointer; font-family: inherit; }
+  .buy-btn { display: block; width: 100%; background: #1a3a1a; border: 1px solid #166534; color: #4ade80; padding: 16px; border-radius: 12px; font-size: 15px; font-weight: 700; text-align: center; text-decoration: none; margin-bottom: 10px; margin-top: 4px; }
+  .amazon-btn { display: block; width: 100%; background: #1c1a10; border: 1px solid #78350f; color: #fbbf24; padding: 14px; border-radius: 12px; font-size: 14px; font-weight: 600; text-align: center; text-decoration: none; margin-bottom: 10px; }
+  .delete-btn { width: 100%; background: transparent; border: 1px solid #1f2d40; color: #475569; padding: 14px; border-radius: 12px; font-size: 13px; cursor: pointer; font-family: inherit; margin-top: 4px; }
+  .form-area { padding: 20px 16px; }
+  .form-group { margin-bottom: 16px; }
+  .form-label { font-size: 11px; color: #475569; letter-spacing: 0.12em; text-transform: uppercase; margin-bottom: 6px; display: block; }
+  .form-input { width: 100%; background: #111827; border: 1px solid #1f2d40; color: #e2e8f0; padding: 12px 14px; border-radius: 10px; font-size: 15px; font-family: inherit; outline: none; }
+  select.form-input { -webkit-appearance: none; appearance: none; }
+  .submit-btn { width: 100%; background: #1e3a8a; border: none; color: #93c5fd; padding: 16px; border-radius: 12px; font-size: 16px; font-weight: 800; cursor: pointer; font-family: inherit; margin-top: 8px; }
+  .ai-overlay { display: none; position: fixed; inset: 0; background: rgba(11,15,25,0.93); z-index: 100; flex-direction: column; align-items: center; justify-content: center; gap: 18px; padding: 32px; }
+  .ai-overlay.active { display: flex; }
+  .spinner { width: 44px; height: 44px; border: 3px solid #1f2d40; border-top-color: #3b82f6; border-radius: 50%; animation: spin 0.8s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .ai-status-title { font-size: 15px; font-weight: 700; color: #f1f5f9; }
+  .ai-status-sub { font-size: 12px; color: #64748b; text-align: center; line-height: 1.6; }
+  .ai-status-sub b { color: #93c5fd; }
+  .key-status { font-size: 12px; margin-top: 6px; }
+  .key-status.set { color: #4ade80; }
+  .key-status.unset { color: #f87171; }
+</style>
+</head>
+<body>
+
+<!-- AI LOADING OVERLAY -->
+<div id="ai-overlay" class="ai-overlay">
+  <div class="spinner"></div>
+  <div class="ai-status-title">🤖 Looking up parts...</div>
+  <div class="ai-status-sub">Asking Claude about <b id="ai-model-name"></b><br>This takes about 10-20 seconds</div>
+</div>
+
+<!-- SCREEN: Engine List -->
+<div id="screen-engines" class="screen active">
+  <div class="header">
+    <div class="header-title">🔧 Parts DB</div>
+    <div style="display:flex;gap:8px">
+      <button class="header-btn" style="background:#1e293b;color:#64748b" onclick="showSettings()">⚙️</button>
+      <button class="header-btn" onclick="showAddEngine()">+ Engine</button>
+    </div>
+  </div>
+  <div class="subhead">SELECT ENGINE</div>
+  <div class="scroll-area" id="engine-list"></div>
+</div>
+
+<!-- SCREEN: Parts List -->
+<div id="screen-parts" class="screen">
+  <div class="header">
+    <button class="back-btn" onclick="showEngines()">&#8249; Back</button>
+    <div class="header-title" id="parts-title">Parts</div>
+    <button class="header-btn" onclick="showAddPart()">+</button>
+  </div>
+  <div class="search-wrap">
+    <input class="search-input" id="search-input" placeholder="Search part # or name..." oninput="renderParts()">
+  </div>
+  <div class="chip-row" id="chip-row"></div>
+  <div class="result-meta" id="result-meta"></div>
+  <div class="scroll-area" id="part-list"></div>
+</div>
+
+<!-- SCREEN: Part Detail -->
+<div id="screen-detail" class="screen">
+  <div class="header">
+    <button class="back-btn" onclick="showParts()">&#8249; Back</button>
+    <div class="header-title">Part Detail</div>
+    <div class="header-spacer"></div>
+  </div>
+  <div class="detail-area" id="detail-content"></div>
+</div>
+
+<!-- SCREEN: Add Engine -->
+<div id="screen-add-engine" class="screen">
+  <div class="header">
+    <button class="back-btn" onclick="showEngines()">&#8249; Cancel</button>
+    <div class="header-title">Add Engine</div>
+    <div class="header-spacer"></div>
+  </div>
+  <div class="form-area">
+    <div class="form-group">
+      <label class="form-label">Display Name *</label>
+      <input class="form-input" id="ne-name" placeholder="e.g. Vanguard 18HP">
+    </div>
+    <div class="form-group">
+      <label class="form-label">Full Model Number *</label>
+      <input class="form-input" id="ne-model" placeholder="e.g. 356447-0165-E1">
+    </div>
+    <div class="form-group">
+      <label class="form-label">Notes (optional)</label>
+      <input class="form-input" id="ne-notes" placeholder="e.g. 570cc, horizontal shaft">
+    </div>
+    <button class="submit-btn" onclick="addEngine(true)" style="background:#14532d;color:#86efac">&#10024; Add + AI Lookup Parts</button>
+    <button class="submit-btn" onclick="addEngine(false)" style="margin-top:10px;background:#1e293b;color:#64748b;font-size:13px">Add Engine (Empty)</button>
+    <div id="no-key-warning" style="display:none;margin-top:10px;font-size:11px;color:#f87171;text-align:center">
+      No API key saved — tap the settings button on the home screen.
+    </div>
+  </div>
+</div>
+
+<!-- SCREEN: Settings -->
+<div id="screen-settings" class="screen">
+  <div class="header">
+    <button class="back-btn" onclick="showEngines()">&#8249; Back</button>
+    <div class="header-title">&#9881;&#65039; Settings</div>
+    <div class="header-spacer"></div>
+  </div>
+  <div class="form-area">
+    <div class="form-group">
+      <label class="form-label">Claude API Key</label>
+      <input class="form-input" id="api-key-input" type="password" placeholder="sk-ant-api03-...">
+      <div class="key-status" id="key-status"></div>
+    </div>
+    <button class="submit-btn" onclick="saveApiKey()">Save Key</button>
+    <div style="margin-top:24px;font-size:11px;color:#475569;line-height:1.8">
+      Key stored only on this device (localStorage).<br>
+      Get a key at <span style="color:#60a5fa">console.anthropic.com</span><br><br>
+      The AI lookup needs internet. Once parts are saved they work offline.
+    </div>
+  </div>
+</div>
+
+<!-- SCREEN: Add Part -->
+<div id="screen-add-part" class="screen">
+  <div class="header">
+    <button class="back-btn" onclick="showParts()">&#8249; Cancel</button>
+    <div class="header-title">Add Part</div>
+    <div class="header-spacer"></div>
+  </div>
+  <div class="form-area">
+    <div class="form-group">
+      <label class="form-label">Part Number *</label>
+      <input class="form-input" id="np-num" placeholder="e.g. 846820">
+    </div>
+    <div class="form-group">
+      <label class="form-label">Part Name *</label>
+      <input class="form-input" id="np-name" placeholder="e.g. Starter Solenoid">
+    </div>
+    <div class="form-group">
+      <label class="form-label">Category</label>
+      <select class="form-input" id="np-cat">
+        <option>Electric Starter</option>
+        <option>Air Cleaner</option>
+        <option>Carburetor</option>
+        <option>Fuel Supply</option>
+        <option>Lubrication</option>
+        <option>Ignition</option>
+        <option>Exhaust</option>
+        <option>Gaskets &amp; Seals</option>
+        <option>Controls</option>
+        <option>Recoil Starter</option>
+      </select>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Notes / Cross-references</label>
+      <input class="form-input" id="np-notes" placeholder="Cross-refs, fitment notes...">
+    </div>
+    <button class="submit-btn" onclick="addPart()">Add Part</button>
+  </div>
+</div>
+
+<script>
+var INITIAL_ENGINES = [
+  {
+    id: "305447-0037-G1",
+    name: "Vanguard 16HP",
+    model: "305447-0037-G1",
+    notes: "479cc · Horizontal shaft · 1in x 3-21/32in",
+    parts: [
+      { partNumber: "846820",  name: "Starter Solenoid",          category: "Electric Starter", notes: "3-terminal; cross-refs 691656, 807829, 745000MA" },
+      { partNumber: "691656",  name: "Starter Solenoid (alt)",    category: "Electric Starter", notes: "Cross-reference for 846820" },
+      { partNumber: "844717",  name: "Electric Starter Motor",    category: "Electric Starter", notes: "12V OEM starter motor" },
+      { partNumber: "394018S", name: "Air Filter Cartridge",      category: "Air Cleaner",      notes: "Paper element" },
+      { partNumber: "272490S", name: "Air Filter Pre-Cleaner",    category: "Air Cleaner",      notes: "Foam wrap pre-cleaner" },
+      { partNumber: "271794S", name: "Air Filter Pre-Cleaner (alt)", category: "Air Cleaner",   notes: "" },
+      { partNumber: "844991",  name: "Carburetor",                category: "Carburetor",       notes: "OEM; aftermarket cross-refs: 846109, 845906" },
+      { partNumber: "597338",  name: "Fuel Pump",                 category: "Fuel Supply",      notes: "OEM verified" },
+      { partNumber: "791766",  name: "Fuel Line",                 category: "Fuel Supply",      notes: "1/4in ID, cut to length" },
+      { partNumber: "845125",  name: "Fuel Filter",               category: "Fuel Supply",      notes: "OEM verified" },
+      { partNumber: "795027",  name: "Fuel Tank Cap",             category: "Fuel Supply",      notes: "" },
+      { partNumber: "692094",  name: "Fuel Shutoff Solenoid",     category: "Fuel Supply",      notes: "Anti-afterfire carb solenoid" },
+      { partNumber: "842921",  name: "Oil Filter",                category: "Lubrication",      notes: "OEM verified" },
+      { partNumber: "692063",  name: "Oil Adapter Gasket",        category: "Lubrication",      notes: "" },
+      { partNumber: "491055S", name: "Spark Plug",                category: "Ignition",         notes: "OEM verified; Champion RC12YC equivalent" },
+      { partNumber: "692076",  name: "Spark Plug Boot",           category: "Ignition",         notes: "" },
+      { partNumber: "692318",  name: "Ignition Key Switch",       category: "Ignition",         notes: "" },
+      { partNumber: "845606",  name: "Magneto Armature",          category: "Ignition",         notes: "Superseded to 84003819" },
+      { partNumber: "691613",  name: "Exhaust Gasket",            category: "Exhaust",          notes: "" },
+      { partNumber: "691766",  name: "Drain Plug Washer",         category: "Gaskets & Seals",  notes: "" },
+      { partNumber: "807085",  name: "Sealing Washer",            category: "Gaskets & Seals",  notes: "" },
+      { partNumber: "791850",  name: "Hose Clamp",                category: "Gaskets & Seals",  notes: "" },
+      { partNumber: "691694",  name: "Intake Gasket",             category: "Gaskets & Seals",  notes: "" },
+      { partNumber: "691995",  name: "Rocker Switch",             category: "Controls",         notes: "Fits 305440/305442/305447" },
+      { partNumber: "496881",  name: "Starter Drive",             category: "Recoil Starter",   notes: "" }
+    ]
+  }
+];
+
+var CAT_COLOR = {
+  "Electric Starter":"#fbbf24","Air Cleaner":"#34d399","Carburetor":"#60a5fa",
+  "Fuel Supply":"#a78bfa","Lubrication":"#f87171","Ignition":"#fb923c",
+  "Exhaust":"#94a3b8","Gaskets & Seals":"#6ee7b7","Controls":"#c084fc","Recoil Starter":"#f472b6"
+};
+var CAT_ICON = {
+  "Electric Starter":"⚡","Air Cleaner":"💨","Carburetor":"🔩","Fuel Supply":"⛽",
+  "Lubrication":"🛢️","Ignition":"🔥","Exhaust":"💨","Gaskets & Seals":"🔧","Controls":"🎛️","Recoil Starter":"🔄"
+};
+var CATEGORIES = ["All","Electric Starter","Air Cleaner","Carburetor","Fuel Supply","Lubrication","Ignition","Exhaust","Gaskets & Seals","Controls","Recoil Starter"];
+
+var engines = [];
+var currentEngineId = null;
+var currentPart = null;
+var catFilter = "All";
+
+function load() {
+  try {
+    var s = localStorage.getItem("eparts_v3");
+    engines = s ? JSON.parse(s) : JSON.parse(JSON.stringify(INITIAL_ENGINES));
+  } catch(e) { engines = JSON.parse(JSON.stringify(INITIAL_ENGINES)); }
+}
+function save() { try { localStorage.setItem("eparts_v3", JSON.stringify(engines)); } catch(e) {} }
+function getEngine() { for(var i=0;i<engines.length;i++){ if(engines[i].id===currentEngineId) return engines[i]; } return null; }
+
+function showScreen(id) {
+  var screens = document.querySelectorAll('.screen');
+  for(var i=0;i<screens.length;i++) screens[i].classList.remove('active');
+  document.getElementById('screen-'+id).classList.add('active');
+  window.scrollTo(0,0);
+}
+
+function showEngines() { renderEngineList(); showScreen('engines'); }
+
+function showSettings() {
+  var key = localStorage.getItem('claude_api_key') || '';
+  document.getElementById('api-key-input').value = key ? '................' : '';
+  var ks = document.getElementById('key-status');
+  ks.textContent = key ? '✓ API key saved' : '✗ No API key saved';
+  ks.className = 'key-status ' + (key ? 'set' : 'unset');
+  showScreen('settings');
+}
+
+function saveApiKey() {
+  var val = document.getElementById('api-key-input').value.trim();
+  if (!val || val === '................') { alert('Please enter your API key.'); return; }
+  localStorage.setItem('claude_api_key', val);
+  var ks = document.getElementById('key-status');
+  ks.textContent = '✓ API key saved';
+  ks.className = 'key-status set';
+  document.getElementById('api-key-input').value = '................';
+  setTimeout(function(){ showEngines(); }, 600);
+}
+
+function showAddEngine() {
+  document.getElementById('ne-name').value = '';
+  document.getElementById('ne-model').value = '';
+  document.getElementById('ne-notes').value = '';
+  var hasKey = !!localStorage.getItem('claude_api_key');
+  document.getElementById('no-key-warning').style.display = hasKey ? 'none' : 'block';
+  showScreen('add-engine');
+}
+
+function showParts() { catFilter="All"; renderChips(); renderParts(); showScreen('parts'); }
+
+function showAddPart() {
+  document.getElementById('np-num').value='';
+  document.getElementById('np-name').value='';
+  document.getElementById('np-notes').value='';
+  showScreen('add-part');
+}
+
+function selectEngine(id) {
+  currentEngineId = id;
+  var eng = getEngine();
+  document.getElementById('parts-title').textContent = eng ? eng.name : 'Parts';
+  document.getElementById('search-input').value = '';
+  catFilter = "All";
+  renderChips();
+  renderParts();
+  showScreen('parts');
+}
+
+function openDetail(partNumber) {
+  var eng = getEngine(); if(!eng) return;
+  currentPart = null;
+  for(var i=0;i<eng.parts.length;i++){ if(eng.parts[i].partNumber===partNumber){ currentPart=eng.parts[i]; break; } }
+  if(!currentPart) return;
+  renderDetail();
+  showScreen('detail');
+}
+
+function renderEngineList() {
+  var el = document.getElementById('engine-list');
+  if(!engines.length){ el.innerHTML='<div class="empty">No engines yet. Tap + Engine to add one.</div>'; return; }
+  var html = '';
+  for(var i=0;i<engines.length;i++){
+    var e = engines[i];
+    html += '<div class="engine-card" onclick="selectEngine(\''+esc(e.id)+'\')">';
+    html += '<div class="engine-name">'+esc(e.name)+'</div>';
+    html += '<div class="engine-model">'+esc(e.model)+'</div>';
+    if(e.notes) html += '<div class="engine-notes">'+esc(e.notes)+'</div>';
+    html += '<div class="engine-count">'+e.parts.length+' parts &#8250;</div>';
+    html += '</div>';
+  }
+  el.innerHTML = html;
+}
+
+function renderChips() {
+  var row = document.getElementById('chip-row');
+  var html = '';
+  for(var i=0;i<CATEGORIES.length;i++){
+    var c = CATEGORIES[i];
+    var active = catFilter===c ? ' active' : '';
+    var label = c==='All' ? 'All' : (CAT_ICON[c]||'')+' '+c;
+    html += '<button class="chip'+active+'" onclick="setFilter(\''+esc(c)+'\')">'+label+'</button>';
+  }
+  row.innerHTML = html;
+}
+
+function setFilter(cat){ catFilter=cat; renderChips(); renderParts(); }
+
+function renderParts() {
+  var eng = getEngine(); if(!eng) return;
+  var q = (document.getElementById('search-input').value||'').toLowerCase();
+  var filtered = [];
+  for(var i=0;i<eng.parts.length;i++){
+    var p = eng.parts[i];
+    var matchCat = catFilter==='All' || p.category===catFilter;
+    var matchQ = !q || p.partNumber.toLowerCase().indexOf(q)>=0 || p.name.toLowerCase().indexOf(q)>=0 || (p.notes||'').toLowerCase().indexOf(q)>=0;
+    if(matchCat && matchQ) filtered.push(p);
+  }
+  document.getElementById('result-meta').textContent = filtered.length+' of '+eng.parts.length+' parts';
+  var el = document.getElementById('part-list');
+  if(!filtered.length){ el.innerHTML='<div class="empty">No parts match. Try clearing the search.</div><button class="csv-btn" onclick="exportCSV()">&#8595; Export CSV</button>'; return; }
+  var html = '';
+  for(var i=0;i<filtered.length;i++){
+    var p = filtered[i];
+    var col = CAT_COLOR[p.category]||'#475569';
+    html += '<div class="part-card" onclick="openDetail(\''+esc(p.partNumber)+'\')">';
+    html += '<div class="part-row">';
+    html += '<div class="cat-dot" style="background:'+col+'"></div>';
+    html += '<div class="part-info"><div class="part-name">'+esc(p.name)+'</div><div class="part-num">'+esc(p.partNumber)+'</div></div>';
+    html += '<div class="cat-badge" style="background:'+col+'22;color:'+col+';border:1px solid '+col+'44">'+(CAT_ICON[p.category]||'')+' '+esc(p.category)+'</div>';
+    html += '<div class="chevron">&#8250;</div></div>';
+    if(p.notes) html += '<div class="part-note-preview">'+esc(p.notes)+'</div>';
+    html += '</div>';
+  }
+  html += '<button class="csv-btn" onclick="exportCSV()">&#8595; Export CSV</button>';
+  el.innerHTML = html;
+}
+
+function renderDetail() {
+  var p = currentPart; if(!p) return;
+  var eng = getEngine();
+  var col = CAT_COLOR[p.category]||'#475569';
+  var bsUrl = 'https://shop.briggsandstratton.com/apps/omega-search/?q='+encodeURIComponent(p.partNumber);
+  var amzUrl = 'https://www.amazon.com/s?k=Briggs+Stratton+'+encodeURIComponent(p.partNumber);
+  var html = '';
+  html += '<div class="detail-card"><div class="detail-label">PART NUMBER</div>';
+  html += '<div class="pn-row"><div class="big-pn">'+esc(p.partNumber)+'</div>';
+  html += '<button class="copy-btn" id="copy-btn" onclick="copyPN(\''+esc(p.partNumber)+'\')">Copy</button></div></div>';
+  html += '<div class="detail-card"><div class="detail-label">PART NAME</div><div class="detail-value">'+esc(p.name)+'</div></div>';
+  html += '<div class="detail-card"><div class="detail-label">CATEGORY</div>';
+  html += '<div class="cat-badge" style="background:'+col+'22;color:'+col+';border:1px solid '+col+'44;display:inline-flex;font-size:14px;padding:6px 14px">'+(CAT_ICON[p.category]||'')+' '+esc(p.category)+'</div></div>';
+  if(p.notes) html += '<div class="detail-card"><div class="detail-label">NOTES / CROSS-REFS</div><div class="detail-value">'+esc(p.notes)+'</div></div>';
+  if(eng) html += '<div class="detail-card"><div class="detail-label">ENGINE</div><div class="detail-value">'+esc(eng.name)+' · '+esc(eng.model)+'</div></div>';
+  html += '<a href="'+bsUrl+'" target="_blank" class="buy-btn">&#128722; Buy on Briggs &amp; Stratton Store</a>';
+  html += '<a href="'+amzUrl+'" target="_blank" class="amazon-btn">Search Amazon for '+esc(p.partNumber)+'</a>';
+  html += '<button class="delete-btn" onclick="deletePart(\''+esc(p.partNumber)+'\')">&#128465; Remove Part</button>';
+  document.getElementById('detail-content').innerHTML = html;
+}
+
+function copyPN(pn) {
+  navigator.clipboard.writeText(pn).catch(function(){});
+  var btn = document.getElementById('copy-btn');
+  if(btn){ btn.textContent='✓ Copied'; setTimeout(function(){ if(btn) btn.textContent='Copy'; },1800); }
+}
+
+function deletePart(pn) {
+  for(var i=0;i<engines.length;i++){
+    if(engines[i].id===currentEngineId){
+      engines[i].parts = engines[i].parts.filter(function(p){ return p.partNumber!==pn; });
+      break;
+    }
+  }
+  save(); showParts();
+}
+
+function addEngine(useAI) {
+  var name  = document.getElementById('ne-name').value.trim();
+  var model = document.getElementById('ne-model').value.trim();
+  var notes = document.getElementById('ne-notes').value.trim();
+  if(!name||!model){ alert('Name and model number are required.'); return; }
+  for(var i=0;i<engines.length;i++){ if(engines[i].id===model){ alert('Engine with this model already exists.'); return; } }
+  engines.push({ id:model, name:name, model:model, notes:notes, parts:[] });
+  save();
+  if(useAI){
+    var apiKey = localStorage.getItem('claude_api_key');
+    if(!apiKey){ alert('No API key found. Go to Settings to add one.'); selectEngine(model); return; }
+    aiLookupParts(model, name, model, apiKey);
+  } else {
+    selectEngine(model);
+  }
+}
+
+function addPart() {
+  var partNumber = document.getElementById('np-num').value.trim();
+  var name       = document.getElementById('np-name').value.trim();
+  var category   = document.getElementById('np-cat').value;
+  var notes      = document.getElementById('np-notes').value.trim();
+  if(!partNumber||!name){ alert('Part number and name are required.'); return; }
+  for(var i=0;i<engines.length;i++){
+    if(engines[i].id===currentEngineId){
+      engines[i].parts.push({ partNumber:partNumber, name:name, category:category, notes:notes });
+      break;
+    }
+  }
+  save(); showParts();
+}
+
+function exportCSV() {
+  var eng = getEngine(); if(!eng) return;
+  var rows = [['Part Number','Name','Category','Notes','B&S Store Link']];
+  for(var i=0;i<eng.parts.length;i++){
+    var p = eng.parts[i];
+    rows.push([p.partNumber, p.name, p.category, p.notes||'',
+      'https://shop.briggsandstratton.com/apps/omega-search/?q='+p.partNumber]);
+  }
+  var csv = rows.map(function(r){
+    return r.map(function(c){ return '"'+String(c).replace(/"/g,'""')+'"'; }).join(',');
+  }).join('\n');
+  var a = document.createElement('a');
+  a.href = 'data:text/csv;charset=utf-8,'+encodeURIComponent(csv);
+  a.download = eng.id+'-parts.csv';
+  a.click();
+}
+
+function aiLookupParts(id, name, model, apiKey) {
+  document.getElementById('ai-model-name').textContent = model;
+  document.getElementById('ai-overlay').classList.add('active');
+
+  var prompt = 'You are an expert Briggs & Stratton small engine parts database. ' +
+    'For engine model ' + model + ' (' + name + '), list the 25 most commonly replaced OEM parts. ' +
+    'Return ONLY a raw JSON array with no markdown, no code fences, no explanation. ' +
+    'Each object must have exactly these fields: ' +
+    '"partNumber" (string - OEM B&S part number), ' +
+    '"name" (string - short part name), ' +
+    '"category" (string - must be exactly one of: Electric Starter, Air Cleaner, Carburetor, Fuel Supply, Lubrication, Ignition, Exhaust, Gaskets & Seals, Controls, Recoil Starter), ' +
+    '"notes" (string - cross-refs or fitment info, can be empty string). ' +
+    'Prioritise: spark plug, air filter, oil filter, fuel filter, fuel pump, carburetor, solenoid, starter motor, ignition coil, gaskets, oil seals, governor spring.';
+
+  fetch('https://api.anthropic.com/v1/messages', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'x-api-key': apiKey,
+      'anthropic-version': '2023-06-01',
+      'anthropic-dangerous-direct-browser-access': 'true'
+    },
+    body: JSON.stringify({
+      model: 'claude-sonnet-4-6',
+      max_tokens: 2048,
+      messages: [{ role: 'user', content: prompt }]
+    })
+  })
+  .then(function(resp) {
+    if(!resp.ok){ return resp.json().then(function(e){ throw new Error((e&&e.error&&e.error.message)||('API error '+resp.status)); }); }
+    return resp.json();
+  })
+  .then(function(data) {
+    var text = (data.content&&data.content[0]&&data.content[0].text)||'';
+    var clean = text.replace(/```json|```/gi,'').trim();
+    var parts = JSON.parse(clean);
+    if(!Array.isArray(parts)) throw new Error('Response was not a JSON array');
+    var valid = parts.filter(function(p){ return p.partNumber&&p.name&&p.category; });
+    for(var i=0;i<engines.length;i++){ if(engines[i].id===id){ engines[i].parts=valid; break; } }
+    save();
+    document.getElementById('ai-overlay').classList.remove('active');
+    selectEngine(id);
+  })
+  .catch(function(err) {
+    document.getElementById('ai-overlay').classList.remove('active');
+    alert('AI lookup failed: '+err.message+'\n\nEngine added with no parts - add them manually.');
+    selectEngine(id);
+  });
+}
+
+function esc(str) {
+  return String(str||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+}
+
+load();
+renderEngineList();
+</script>
+</body>
+</html>
